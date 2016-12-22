@@ -20,6 +20,15 @@ impl<A> BitAnd for (A,)
     }
 }
 
+impl<A> BitAnd for A
+    where A: BitSetLike
+{
+    type Value = A;
+    fn and(self) -> Self::Value {
+        self
+    }
+}
+
 macro_rules! bitset_and {
     // use variables to indicate the arity of the tuple
     ($($from:ident),*) => {
@@ -69,6 +78,13 @@ pub trait Join {
     fn iter(self) -> JoinIter<Self> where Self: Sized {
         JoinIter::new(self)
     }
+    /// stuff
+    fn check(self) -> CheckJoin<Self> where Self: Sized, <Self as Join>::Mask: BitAnd + Clone {
+        let mask = self.open().0.clone();
+        CheckJoin {
+            mask: mask,
+        }
+    }
     /// Open this join by returning the mask and the storages.
     fn open(self) -> (Self::Mask, Self::Value);
     /// Get a joined component value by a gien index.
@@ -100,6 +116,22 @@ impl<J: Join> std::iter::Iterator for JoinIter<J> {
         self.keys.next().map(|idx| unsafe {
             J::get(&mut self.values, idx)
         })
+    }
+}
+
+pub struct CheckJoin<J: Join> {
+    mask: J::Mask,
+}
+
+impl<J: Join> Join for CheckJoin<J> {
+    type Type = ();
+    type Value = ();
+    type Mask = J::Mask;
+    fn open(self) -> (Self::Mask, Self::Value) {
+        (self.mask, ())
+    }
+    unsafe fn get(v: &mut Self::Value, i: Index) -> Self::Type {
+        ()
     }
 }
 
