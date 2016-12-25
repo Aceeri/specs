@@ -7,7 +7,7 @@ use std::ops::{Deref, DerefMut, Not};
 use fnv::FnvHasher;
 
 use bitset::{BitSet, BitSetNot};
-use join::Join;
+use join::{Join, MaskClone};
 use world::{Component, Allocator};
 use {Entity, Index};
 
@@ -71,6 +71,12 @@ impl<'a> Join for AntiStorage<'a> {
     }
 }
 
+impl<'a> MaskClone for AntiStorage<'a> {
+    type MaskClone = BitSetNot<BitSet>;
+    fn mask_clone(&self) -> Self::MaskClone {
+        BitSetNot(self.0.clone())
+    }
+}
 
 /// A wrapper around the masked storage and the generations vector.
 /// Can be used for safe lookup of components, insertions and removes.
@@ -205,6 +211,27 @@ impl<'a, T, A, D> Join for &'a mut Storage<T, A, D> where
     }
 }
 
+impl<T, A, D> MaskClone for Storage<T, A, D> where
+    T: Component,
+    A: Deref<Target = Allocator>,
+    D: DerefMut<Target = MaskedStorage<T>>,
+{
+    type MaskClone = BitSet;
+    fn mask_clone(&self) -> Self::MaskClone {
+        self.data.mask.clone()
+    }
+}
+
+impl<'a, T, A, D> MaskClone for &'a Storage<T, A, D> where
+    T: Component,
+    A: Deref<Target = Allocator>,
+    D: DerefMut<Target = MaskedStorage<T>>,
+{
+    type MaskClone = BitSet;
+    fn mask_clone(&self) -> Self::MaskClone {
+        self.data.mask.clone()
+    }
+}
 
 /// Used by the framework to quickly join componets
 pub trait UnprotectedStorage<T>: Sized {

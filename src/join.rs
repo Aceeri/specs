@@ -78,13 +78,6 @@ pub trait Join {
     fn iter(self) -> JoinIter<Self> where Self: Sized {
         JoinIter::new(self)
     }
-    /// stuff
-    fn check(self) -> CheckJoin<Self> where Self: Sized, <Self as Join>::Mask: BitAnd + Clone {
-        let mask = self.open().0.clone();
-        CheckJoin {
-            mask: mask,
-        }
-    }
     /// Open this join by returning the mask and the storages.
     fn open(self) -> (Self::Mask, Self::Value);
     /// Get a joined component value by a gien index.
@@ -119,25 +112,53 @@ impl<J: Join> std::iter::Iterator for JoinIter<J> {
     }
 }
 
-pub struct CheckJoin<J: Join> {
-    mask: J::Mask,
+/// Implementators of `MaskClone` can join bitsets using `Join`
+/// without returning the contents.
+pub trait MaskClone {
+    /// Type of a cloned bit mask (should not be a reference to the original).
+    type MaskClone: BitSetLike;
+    /// Create a join that does not return the contents.
+    fn check(&self) -> CheckJoin<Self::MaskClone> where Self: Sized + MaskClone {
+        CheckJoin {
+            mask: self.mask_clone(),
+        }
+    }
+    /// Get a cloned bit mask.
+    fn mask_clone(&self) -> Self::MaskClone;
 }
 
-impl<J: Join> Join for CheckJoin<J> {
+/// Holder for bitmask of joins
+pub struct CheckJoin<M: BitSetLike> {
+    mask: M,
+}
+
+impl<M: BitSetLike> Join for CheckJoin<M> {
     type Type = ();
     type Value = ();
-    type Mask = J::Mask;
+    type Mask = M;
     fn open(self) -> (Self::Mask, Self::Value) {
         (self.mask, ())
     }
-    unsafe fn get(v: &mut Self::Value, i: Index) -> Self::Type {
+    unsafe fn get(_: &mut Self::Value, _: Index) -> Self::Type {
+        ()
+    }
+}
+
+impl<'a, M: BitSetLike> Join for &'a CheckJoin<M> {
+    type Type = ();
+    type Value = ();
+    type Mask = &'a M;
+    fn open(self) -> (Self::Mask, Self::Value) {
+        (&self.mask, ())
+    }
+    unsafe fn get(_: &mut Self::Value, _: Index) -> Self::Type {
         ()
     }
 }
 
 macro_rules! define_open {
     // use variables to indicate the arity of the tuple
-    ($($from:ident),*) => {
+    ($($from:ident : $position:tt ),*) => {
         impl<'a, $($from,)*> Join for ($($from),*,)
             where $($from: Join),*,
                   ($(<$from as Join>::Mask,)*): BitAnd,
@@ -160,22 +181,35 @@ macro_rules! define_open {
                 ($($from::get($from, i),)*)
             }
         }
+
+        impl<'a, $($from,)*> MaskClone for ($($from),*,)
+            where $($from: MaskClone),*
+        {
+            type MaskClone = <($($from::MaskClone,)*) as BitAnd>::Value;
+            #[allow(non_snake_case)]
+            fn mask_clone(&self) -> Self::MaskClone {
+                $(
+                let $from = self.$position.mask_clone();
+                )*
+                ($($from),*,).and()
+            }
+        }
     }
 }
 
-define_open!{A}
-define_open!{A, B}
-define_open!{A, B, C}
-define_open!{A, B, C, D}
-define_open!{A, B, C, D, E}
-define_open!{A, B, C, D, E, F}
-define_open!{A, B, C, D, E, F, G}
-define_open!{A, B, C, D, E, F, G, H}
-define_open!{A, B, C, D, E, F, G, H, I}
-define_open!{A, B, C, D, E, F, G, H, I, J}
-define_open!{A, B, C, D, E, F, G, H, I, J, K}
-define_open!{A, B, C, D, E, F, G, H, I, J, K, L}
-define_open!{A, B, C, D, E, F, G, H, I, J, K, L, M}
-define_open!{A, B, C, D, E, F, G, H, I, J, K, L, M, N}
-define_open!{A, B, C, D, E, F, G, H, I, J, K, L, M, N, O}
-define_open!{A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P}
+define_open!{A:0}
+define_open!{A:0, B:1}
+define_open!{A:0, B:1, C:2}
+define_open!{A:0, B:1, C:2, D:3}
+define_open!{A:0, B:1, C:2, D:3, E:4}
+define_open!{A:0, B:1, C:2, D:3, E:4, F:5}
+define_open!{A:0, B:1, C:2, D:3, E:4, F:5, G:6}
+define_open!{A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7}
+define_open!{A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7, I:8}
+define_open!{A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7, I:8, J:9}
+define_open!{A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7, I:8, J:9, K:10}
+define_open!{A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7, I:8, J:9, K:10, L:11}
+define_open!{A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7, I:8, J:9, K:10, L:11, M:12}
+define_open!{A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7, I:8, J:9, K:10, L:11, M:12, N:13}
+define_open!{A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7, I:8, J:9, K:10, L:11, M:12, N:13, O:14}
+define_open!{A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7, I:8, J:9, K:10, L:11, M:12, N:13, O:14, P:15}

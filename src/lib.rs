@@ -21,7 +21,7 @@ pub use storage::{Storage, UnprotectedStorage, AntiStorage,
                   MaskedStorage};
 pub use world::{Component, World, EntityBuilder, Entities, CreateEntities,
                 Allocator};
-pub use join::{Join, JoinIter};
+pub use join::{Join, JoinIter, CheckJoin, MaskClone};
 #[cfg(feature="parallel")]
 pub use planner::*; // * because planner contains many macro-generated public functions
 
