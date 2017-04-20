@@ -1,0 +1,41 @@
+[package]
+name = "specs"
+version = "0.8.0"
+description = """
+Parallel Entity-Component System.
+
+Specs is a parallel ECS in Rust. It combines the performance of the beast with the flexibility of a cat.
+
+Objectives:
+
+- Automatically parallelize workload, while following Rust ownership rules applied to the components.
+- Do not restrict the storage implementation for a particular component.
+- Place no constraints onto the component types themselves, allow defining them in user modules.
+- Have low overhead, high safety, and optimal ergonomics.
+"""
+documentation = "https://slide-rs.github.io/specs/"
+repository = "https://github.com/slide-rs/specs"
+keywords = ["gamedev"]
+license = "Apache-2.0"
+authors = ["slide-rs hackers"]
+exclude = ["doc", ".travis.yml"]
+
+[dependencies]
+atom = "0.3"
+fnv = "1.0"
+hibitset = "0.1.1"
+mopa = "0.2"
+shred = { git = "https://github.com/torkleyy/shred", rev = "9651382c08d3023db7787a2df751f41403190f71" }
+shred-derive = "0.1.2"
+tuple_utils = "0.2"
+
+serde = { version = "0.9.11", optional = true }
+serde_derive = { version = "0.9.11", optional = true }
+
+[features]
+serialize = ["serde", "serde_derive"]
+
+[dev-dependencies]
+cgmath =  { version = "0.14", features = ["eders"] }
+rand = "0.3"
+serde_json = "0.9.9"

@@ -4,6 +4,7 @@ rust:
 - stable
 
 script:
+- cd specs/ # enter normal specs directory
 - cargo build --verbose
 - cargo test --verbose
 - cargo build --verbose --no-default-features
