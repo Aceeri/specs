@@ -86,10 +86,12 @@ pub mod prelude {
 }
 
 pub use storage::storages;
+pub use group::ComponentGroup;
 
 mod join;
 mod storage;
 mod world;
+mod group;
 
 /// `Index` type is arbitrary. It doesn't show up in any interfaces.
 /// Keeping it 32bit allows for a single 64bit word per entity.
