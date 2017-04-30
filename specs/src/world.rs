@@ -1,6 +1,7 @@
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::marker::PhantomData;
 
 use hibitset::{AtomicBitSet, BitSet, BitSetOr};
 use mopa::Any;
@@ -8,7 +9,7 @@ use shred::{Fetch, FetchMut, Resource, Resources};
 
 use join::Join;
 use storage::{AnyStorage, MaskedStorage, ReadStorage, Storage, UnprotectedStorage, WriteStorage};
-use Index;
+use {Index, ComponentGroup};
 
 /// Internally used structure for `Entity` allocation.
 #[derive(Default, Debug)]
@@ -559,5 +560,29 @@ impl Default for World {
             res: res,
             storages: Default::default(),
         }
+    }
+}
+
+#[cfg(feature="serialize")]
+/// Structure used to deserialize into the world.
+pub struct WorldDeserializer<'a, G, C>
+    where G: ComponentGroup,
+          C: PartialEq + Eq + Hash + 'a,
+{
+    world: &'a mut World<C>,
+    entities: &'a [Entity],
+    phantom: PhantomData<G>,
+}
+
+#[cfg(feature="serialize")]
+impl<'a, G, C> serde::de::DeserializeSeed for WorldDeserializer<'a, G, C>
+    where G: ComponentGroup,
+          C: PartialEq + Eq + Hash + 'a,
+{
+    type Value = ();
+    fn deserialize<D>(self, deserializer: D) -> Result<(), D::Error>
+        where D: serde::Deserializer
+    {
+        <G as ComponentGroup>::deserialize_group(self.world, self.entities, deserializer)
     }
 }
