@@ -7,13 +7,14 @@ authors = ["Aceeri <conmcclusk@gmail.com>"]
 proc-macro = true
 
 [dependencies]
-specs = { path = "../specs" }
+specs = { path = "../specs", version = "0.8.0" }
 syn = "0.11.10"
 quote = "0.3.15"
 serde = { version = "0.9.11", optional = true }
 
 [dev-dependencies]
 serde_derive = "0.9.11"
+serde_json = "0.9.9"
 
 [features]
 default = []

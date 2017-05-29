@@ -26,6 +26,9 @@ pub use join::{Join, JoinIter};
 pub use world::World;
 pub use storage::{CheckStorage, InsertResult, UnprotectedStorage};
 
+#[cfg(feature="serialize")]
+pub use world::{WorldSerializer, WorldDeserializer};
+
 #[cfg(feature = "serialize")]
 pub use storage::{MergeError, PackedData};
 
