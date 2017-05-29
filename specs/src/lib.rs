@@ -74,6 +74,10 @@ pub mod data {
 pub mod entity {
     pub use world::{Component, CreateIter, CreateIterAtomic, Entity, Entities, EntityBuilder,
                     Generation};
+    pub use group::ComponentGroup;
+
+    #[cfg(feature="serialize")]
+    pub use group::SerializeGroup;
 }
 
 /// Reexports for very common types.
@@ -86,7 +90,6 @@ pub mod prelude {
 }
 
 pub use storage::storages;
-pub use group::ComponentGroup;
 
 mod join;
 mod storage;

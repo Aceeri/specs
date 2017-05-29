@@ -1,7 +1,6 @@
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::marker::PhantomData;
 
 use hibitset::{AtomicBitSet, BitSet, BitSetOr};
 use mopa::Any;
@@ -184,13 +183,13 @@ impl Entity {
 
     /// Returns the index of the `Entity`.
     #[inline]
-    pub fn id(&self) -> Index {
+    pub fn get_id(&self) -> Index {
         self.0
     }
 
     /// Returns the `Generation` of the `Entity`.
     #[inline]
-    pub fn gen(&self) -> Generation {
+    pub fn get_gen(&self) -> Generation {
         self.1
     }
 }
@@ -563,26 +562,14 @@ impl Default for World {
     }
 }
 
-#[cfg(feature="serialize")]
-/// Structure used to deserialize into the world.
-pub struct WorldDeserializer<'a, G, C>
-    where G: ComponentGroup,
-          C: PartialEq + Eq + Hash + 'a,
-{
-    world: &'a mut World<C>,
-    entities: &'a [Entity],
-    phantom: PhantomData<G>,
-}
+impl Default for World {
+    fn default() -> Self {
+        let mut res = Resources::new();
+        res.add(Entities::default(), ());
 
-#[cfg(feature="serialize")]
-impl<'a, G, C> serde::de::DeserializeSeed for WorldDeserializer<'a, G, C>
-    where G: ComponentGroup,
-          C: PartialEq + Eq + Hash + 'a,
-{
-    type Value = ();
-    fn deserialize<D>(self, deserializer: D) -> Result<(), D::Error>
-        where D: serde::Deserializer
-    {
-        <G as ComponentGroup>::deserialize_group(self.world, self.entities, deserializer)
+        World {
+            res: res,
+            storages: Default::default(),
+        }
     }
 }
