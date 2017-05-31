@@ -19,7 +19,7 @@ use shred::{Fetch, FetchMut, Resource, Resources};
 
 use join::Join;
 use storage::{AnyStorage, MaskedStorage, ReadStorage, Storage, UnprotectedStorage, WriteStorage};
-use {Index, ComponentGroup};
+use Index;
 
 /// Internally used structure for `Entity` allocation.
 #[derive(Default, Debug)]
@@ -194,13 +194,13 @@ impl Entity {
 
     /// Returns the index of the `Entity`.
     #[inline]
-    pub fn get_id(&self) -> Index {
+    pub fn id(&self) -> Index {
         self.0
     }
 
     /// Returns the `Generation` of the `Entity`.
     #[inline]
-    pub fn get_gen(&self) -> Generation {
+    pub fn gen(&self) -> Generation {
         self.1
     }
 }

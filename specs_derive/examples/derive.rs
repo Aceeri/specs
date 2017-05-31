@@ -1,3 +1,4 @@
+
 extern crate specs;
 #[macro_use]
 extern crate specs_derive;
@@ -14,6 +15,7 @@ extern crate serde_json;
 fn main() {
     use specs::prelude::*;
     use specs::{WorldDeserializer, WorldSerializer};
+    use specs::entity::{ComponentGroup, SerializeGroup};
     use serde::{Deserialize, Serialize};
     use serde::de::DeserializeSeed;
 
@@ -165,6 +167,19 @@ fn main() {
             println!("{}", subgroup);
         }
     }
+
+    fn call_method<T>(s: &str) -> u32 {
+        println!("Nice {}", s);
+        42
+    }
+    
+    fn call_other<T>(s: &str) -> u32 {
+        println!("Static {}", s);
+        3
+    }
+
+    let results = call_SomeGroup!(all => fn call_method [] in [] ("something"));
+    let () = results;
 }
 
 #[cfg(not(feature="serialize"))]
