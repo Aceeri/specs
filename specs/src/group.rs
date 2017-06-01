@@ -31,3 +31,16 @@ pub trait SerializeGroup: ComponentGroup {
     fn deserialize_subgroup<V>(world: &mut World, entities: &[Entity], key: String, visitor: &mut V) -> Result<Option<()>, V::Error>
         where V: serde::de::MapVisitor;
 }
+
+macro_rules! deconstruct {
+    ( $( $associated:tt )* ) => {
+        $( #[doc(hidden)] type $associated; )*
+    }
+}
+
+/// Deconstructs the group.
+pub trait GroupLocals: ComponentGroup {
+    deconstruct!(A B C D E F G H I J K L M N O P Q R S T U V W X Y Z);
+    /// Amount of associated types this group uses.
+    fn used() -> usize;
+}

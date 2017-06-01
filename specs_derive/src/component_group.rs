@@ -46,6 +46,84 @@ pub fn expand_group(input: &DeriveInput) -> Result<Tokens, String> {
         item.field.ty.to_tokens(&mut tokens);
         Ident::new(format!("call_{}!", tokens.as_str()))
     }).collect::<Vec<_>>();
+    
+    let associated = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+    let locals_count = component.iter().count();
+    let locals_associated = associated.chars().map(|c| {
+        let mut tokens = Tokens::new();
+        tokens.append(&c.to_string());
+        tokens
+    }).collect::<Vec<Tokens>>();
+
+    let locals = locals_associated.iter().take(locals_count);
+    let unused = locals_associated.iter().skip(locals_count);
+
+    let locals_impl = quote! {
+        impl _specs::entity::GroupLocals for #name {
+            #( type #locals = #component; )*
+            #( type #unused = (); )*
+            fn used() -> usize {
+                #locals_count
+            }
+        }
+    };
+
+    let call_macro = quote! {
+        macro_rules! call {
+            // Top level calls
+            /*
+            ( $type:ident : $group:ty =>
+                fn $method:ident
+                [ $( $before:ty ),* ] in [ $( $after:ty ),* ]
+                ( $( $args:expr ),* )
+            ) => {
+                call!( $type : $group =>
+                    fn $method
+                    [ $( $before ),* ] in [ $( $after ),* ]
+                    ( $( $args ),* );
+            }
+            */
+            ( local: $group:ty => 
+                fn $method:ident
+                [ $( $before:ty ),* ] in [ $( $after:ty ),* ]
+                ( $( $args:expr ),* )
+            ) => {
+                call!(
+                    $group : GroupLocals =>
+                    fn $method
+                    [ $( $before ),* ] in [ $( $after ),* ]
+                    ( $( $args ),* )
+                    { A B C D E F G H I J K L M N O P Q R S T U V W X Y Z } // Associated items
+                );
+            };
+
+            // Helper methods
+            ($group:ty : $group_trait:ty =>
+                fn $method:ident
+                [ $( $before:ty ),* ] in [ $( $after:ty ),* ]
+                ( $( $args:expr ),* )
+            ) => {
+                call!(
+
+                )
+            };
+            ($group:ty : $group_trait:ty =>
+                fn $method:ident
+                [ $( $before:ty ),* ] in [ $( $after:ty ),* ]
+                ( $( $args:expr ),* )
+                { $( $left:tt )* }
+            ) => {
+                let mut counter = 0;
+                $(
+                    if count < <$group as $group_trait>::used() {
+                        $method::<$( $before , )*, <$group as $group_trait>::$left $( , $after )*>( $( $args )* );   
+                        counter += 1;
+                    }
+                )*
+            };
+        }
+    };
 
     // Macro for expanding usage... 
     let expanded_macro = quote! {
@@ -257,10 +335,11 @@ pub fn expand_group(input: &DeriveInput) -> Result<Tokens, String> {
 
     // Wrap the expanded code to prevent context conflicts.
     let wrap = quote! {
-        #expanded_macro
         #[allow(non_upper_case_globals, unused_attributes, unused_qualifications)]
+        #[macro_use]
         const #dummy_const: () = {
             extern crate specs as _specs;
+            #locals_impl
             #expanded
         };
     };

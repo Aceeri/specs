@@ -11,11 +11,68 @@ extern crate serde_derive;
 #[cfg(feature="serialize")]
 extern crate serde_json;
 
+macro_rules! call {
+    // Top level calls
+    /*
+    ( $type:ident : $group:ty =>
+        fn $method:ident
+        [ $( $before:ty ),* ] in [ $( $after:ty ),* ]
+        ( $( $args:expr ),* )
+    ) => {
+        call!( $type : $group =>
+            fn $method
+            [ $( $before ),* ] in [ $( $after ),* ]
+            ( $( $args ),* );
+    }
+    */
+    ( local: $group:ty => 
+        fn $method:ident
+        [ $( $before:ty ),* ] in [ $( $after:ty ),* ]
+        ( $( $args:expr ),* )
+    ) => {
+        call!(
+            $group : GroupLocals =>
+            fn $method
+            [ $( $before ),* ] in [ $( $after ),* ]
+            ( $( $args ),* )
+        );
+    };
+
+    // Helper methods
+    ($group:ty : $group_trait:ty =>
+        fn $method:ident
+        [ $( $before:ty ),* ] in [ $( $after:ty ),* ]
+        ( $( $args:expr ),* )
+    ) => {
+        call!(
+            $group : $group_trait =>
+            fn $method
+            [ $( $before ),* ] in [ $( $after ),* ]
+            ( $( $args ),* )
+            { A B C D E F G H I J K L M N O P Q R S T U V W X Y Z } // Associated items
+        )
+    };
+    ($group:ty : $group_trait:ty =>
+        fn $method:ident
+        [ $( $before:ty ),* ] in [ $( $after:ty ),* ]
+        ( $( $args:expr ),* )
+        { $( $left:tt )* }
+    ) => {
+        let mut counter = 0;
+        $(
+            if count < <$group as $group_trait>::used() {
+                $method::<$( $before , )*, <$group as $group_trait>::$left $( , $after )*>( $( $args )* );   
+                counter += 1;
+            }
+        )*
+    };
+}
+
 #[cfg(feature="serialize")]
 fn main() {
     use specs::prelude::*;
     use specs::{WorldDeserializer, WorldSerializer};
-    use specs::entity::{ComponentGroup, SerializeGroup};
+    use specs::entity::{ComponentGroup, SerializeGroup, GroupLocals};
     use serde::{Deserialize, Serialize};
     use serde::de::DeserializeSeed;
 
@@ -178,8 +235,10 @@ fn main() {
         3
     }
 
-    let results = call_SomeGroup!(all => fn call_method [] in [] ("something"));
-    let () = results;
+    println!("used: {:?}", <SomeGroup as GroupLocals>::used());
+    call!(local: SomeGroup =>
+        fn method  [ G1, G2 ] in [ G3, G4 ] ( arg1, arg2, arg3)
+    );
 }
 
 #[cfg(not(feature="serialize"))]
