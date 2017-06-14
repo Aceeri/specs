@@ -1,5 +1,5 @@
 
-use syn::{Ident, VariantData, Attribute, NestedMetaItem, MetaItem, Body, DeriveInput, Field};
+use syn::{Ident, VariantData, Attribute, NestedMetaItem, MetaItem, Body, DeriveInput, Field, Ty};
 use quote::{ToTokens, Tokens};
 
 /// Expands the `ComponentGroup` derive implementation.
@@ -15,113 +15,60 @@ pub fn expand_group(input: &DeriveInput) -> Result<Tokens, String> {
     // Duplicate references to the components.
     // `quote` currently doesn't support using the same variable binding twice in a repetition.
 
-    let items = items.iter().filter(|item| {
-        !item.parameter.ignore
-    }).collect::<Vec<_>>();
+    let items = items.iter()
+        .filter(|item| !item.parameter.ignore )
+        .collect::<Vec<&Item>>();
 
     // Component fields
-    let ref component = items.iter().filter(|item| {
-        item.parameter.option.is_component()
-    }).collect::<Vec<_>>();
+    let ref component = items.iter()
+        .filter(|item| item.parameter.option.is_component() )
+        .map(|item| *item)
+        .collect::<Vec<&Item>>();
     let component2 = component;
     let component3 = component;
 
     // Serializable components
-    let ref component_serialize = component.iter().filter(|item| {
-        item.parameter.serialize
-    }).collect::<Vec<_>>();
+    let ref component_serialize = component.iter()
+        .filter(|item| item.parameter.serialize)
+        .map(|item| *item)
+        .collect::<Vec<&Item>>();
     let component_serialize2 = component_serialize;
 
     // Serializable component names
-    let ref component_serialize_field = component_serialize.iter().map(|item| {
-        item.field.ident.as_ref().unwrap()
-    }).collect::<Vec<_>>();
+    let ref component_serialize_field = component_serialize.iter()
+        .map(|item| item.field.ident.as_ref().unwrap() )
+        .collect::<Vec<&Ident>>();
 
     // Subgroup fields
-    let ref subgroup = items.iter().filter(|item| item.parameter.option.is_subgroup()).collect::<Vec<_>>();
+    let ref subgroup = items.iter()
+        .filter(|item| item.parameter.option.is_subgroup() )
+        .map(|item| *item)
+        .collect::<Vec<_>>();
     
     // Subgroup macro names
-    let ref subgroup_macro = subgroup.iter().map(|item| {
-        let mut tokens = Tokens::new();
-        item.field.ty.to_tokens(&mut tokens);
-        Ident::new(format!("call_{}!", tokens.as_str()))
-    }).collect::<Vec<_>>();
-    
-    let associated = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    let ref subgroup_macro = subgroup.iter()
+        .map(|item| {
+            let mut tokens = Tokens::new();
+            item.field.ty.to_tokens(&mut tokens);
+            Ident::new(format!("call_{}!", tokens.as_str()))
+        })
+        .collect::<Vec<_>>();
 
-    let locals_count = component.iter().count();
-    let locals_associated = associated.chars().map(|c| {
-        let mut tokens = Tokens::new();
-        tokens.append(&c.to_string());
-        tokens
-    }).collect::<Vec<Tokens>>();
+    let local_count = component.iter().count();
+    let subgroup_count = subgroup.iter().count();
 
-    let locals = locals_associated.iter().take(locals_count);
-    let unused = locals_associated.iter().skip(locals_count);
+    // Construct Split groups for the components and subgroups.
+    let local_ty = type_list(component);
+    let subgroup_ty = type_list(subgroup);
 
     let locals_impl = quote! {
-        impl _specs::entity::GroupLocals for #name {
-            #( type #locals = #component; )*
-            #( type #unused = (); )*
-            fn used() -> usize {
-                #locals_count
-            }
-        }
-    };
-
-    let call_macro = quote! {
-        macro_rules! call {
-            // Top level calls
-            /*
-            ( $type:ident : $group:ty =>
-                fn $method:ident
-                [ $( $before:ty ),* ] in [ $( $after:ty ),* ]
-                ( $( $args:expr ),* )
-            ) => {
-                call!( $type : $group =>
-                    fn $method
-                    [ $( $before ),* ] in [ $( $after ),* ]
-                    ( $( $args ),* );
-            }
-            */
-            ( local: $group:ty => 
-                fn $method:ident
-                [ $( $before:ty ),* ] in [ $( $after:ty ),* ]
-                ( $( $args:expr ),* )
-            ) => {
-                call!(
-                    $group : GroupLocals =>
-                    fn $method
-                    [ $( $before ),* ] in [ $( $after ),* ]
-                    ( $( $args ),* )
-                    { A B C D E F G H I J K L M N O P Q R S T U V W X Y Z } // Associated items
-                );
-            };
-
-            // Helper methods
-            ($group:ty : $group_trait:ty =>
-                fn $method:ident
-                [ $( $before:ty ),* ] in [ $( $after:ty ),* ]
-                ( $( $args:expr ),* )
-            ) => {
-                call!(
-
-                )
-            };
-            ($group:ty : $group_trait:ty =>
-                fn $method:ident
-                [ $( $before:ty ),* ] in [ $( $after:ty ),* ]
-                ( $( $args:expr ),* )
-                { $( $left:tt )* }
-            ) => {
-                let mut counter = 0;
-                $(
-                    if count < <$group as $group_trait>::used() {
-                        $method::<$( $before , )*, <$group as $group_trait>::$left $( , $after )*>( $( $args )* );   
-                        counter += 1;
-                    }
-                )*
-            };
+        impl _specs::entity::DeconstructedGroup for #name {
+            //type All;
+            type Locals = #local_ty;
+            type Subgroups = #subgroup_ty;
+            //fn all() -> usize { #all_count }
+            fn locals() -> usize { #local_count }
+            fn subgroups() -> usize { #subgroup_count }
         }
     };
 
@@ -446,6 +393,22 @@ fn get_items(input: &DeriveInput) -> Vec<Item> {
             }
         })
         .collect::<Vec<Item>>()
+}
+
+fn type_list(list: &Vec<&Item>) -> Ty {
+    list.iter().rev().enumerate().fold(Ty::Tup(Vec::new()), |tup, (index, item)| {
+        if index == 0 {
+            Ty::Tup(vec![
+                item.field.ty.clone(),
+            ])
+        }
+        else {
+            Ty::Tup(vec![
+                item.field.ty.clone(),
+                tup,
+            ])
+        }
+    })
 }
 
 struct Item<'a> {

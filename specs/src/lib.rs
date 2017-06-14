@@ -77,7 +77,7 @@ pub mod data {
 pub mod entity {
     pub use world::{Component, CreateIter, CreateIterAtomic, Entity, Entities, EntityBuilder,
                     Generation};
-    pub use group::{ComponentGroup, GroupLocals};
+    pub use group::{ComponentGroup, DeconstructedGroup, Split};
 
     #[cfg(feature="serialize")]
     pub use group::SerializeGroup;

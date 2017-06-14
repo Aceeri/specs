@@ -1,4 +1,6 @@
 
+#![recursion_limit="256"]
+
 extern crate specs;
 #[macro_use]
 extern crate specs_derive;
@@ -10,6 +12,13 @@ extern crate serde;
 extern crate serde_derive;
 #[cfg(feature="serialize")]
 extern crate serde_json;
+
+macro_rules! tokens { // possible idea here for feeding the call macro for iterations.
+    () => { // 64 tokens
+        A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
+        A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
+    }
+}
 
 macro_rules! call {
     // Top level calls
@@ -31,7 +40,7 @@ macro_rules! call {
         ( $( $args:expr ),* )
     ) => {
         call!(
-            $group : GroupLocals =>
+            Iter :: $group : Locals =>
             fn $method
             [ $( $before ),* ] in [ $( $after ),* ]
             ( $( $args ),* )
@@ -39,32 +48,33 @@ macro_rules! call {
     };
 
     // Helper methods
-    ($group:ty : $group_trait:ty =>
+    (Iter :: { $( $group:tt )* } [ $( $token:tt )* ] =>
+        fn $method:ident
+        [ $( $before:ty ),* ] in [ $( $after:ty ),* ]
+        ( $( $args:expr ),* )
+    ) => {
+        $method::<$( $before, )* <$( $group )* as Split>::This $( , $after )*>( $( $args ),* );
+
+        if <$( $group )* as Split>::next() {
+            call!(
+                Iter :: { <$( $group )* as Split>::Next } =>
+                    fn $method
+                    [ $( $before ),* ] in [ $( $after ),* ]
+                    ( $( $args ),* )
+            );
+        }
+    };
+    (Iter :: $group:ty : $at:ident =>
         fn $method:ident
         [ $( $before:ty ),* ] in [ $( $after:ty ),* ]
         ( $( $args:expr ),* )
     ) => {
         call!(
-            $group : $group_trait =>
+            Iter :: { <$group as DeconstructedGroup>::$at } [ tokens!() ] =>
             fn $method
             [ $( $before ),* ] in [ $( $after ),* ]
             ( $( $args ),* )
-            { A B C D E F G H I J K L M N O P Q R S T U V W X Y Z } // Associated items
-        )
-    };
-    ($group:ty : $group_trait:ty =>
-        fn $method:ident
-        [ $( $before:ty ),* ] in [ $( $after:ty ),* ]
-        ( $( $args:expr ),* )
-        { $( $left:tt )* }
-    ) => {
-        let mut counter = 0;
-        $(
-            if count < <$group as $group_trait>::used() {
-                $method::<$( $before , )*, <$group as $group_trait>::$left $( , $after )*>( $( $args )* );   
-                counter += 1;
-            }
-        )*
+        );
     };
 }
 
@@ -72,7 +82,7 @@ macro_rules! call {
 fn main() {
     use specs::prelude::*;
     use specs::{WorldDeserializer, WorldSerializer};
-    use specs::entity::{ComponentGroup, SerializeGroup, GroupLocals};
+    use specs::entity::{ComponentGroup, SerializeGroup, DeconstructedGroup, Split};
     use serde::{Deserialize, Serialize};
     use serde::de::DeserializeSeed;
 
@@ -220,7 +230,7 @@ fn main() {
             println!("{}", element);
         }
         println!("subgroups:");
-        for subgroup in SomeGroup::subgroups() {
+        for subgroup in <SomeGroup as ComponentGroup>::subgroups() {
             println!("{}", subgroup);
         }
     }
@@ -235,9 +245,10 @@ fn main() {
         3
     }
 
-    println!("used: {:?}", <SomeGroup as GroupLocals>::used());
+    let s = "test";
+
     call!(local: SomeGroup =>
-        fn method  [ G1, G2 ] in [ G3, G4 ] ( arg1, arg2, arg3)
+        fn call_method [ ] in [ ] (s)
     );
 }
 

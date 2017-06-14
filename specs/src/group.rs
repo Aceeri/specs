@@ -38,9 +38,44 @@ macro_rules! deconstruct {
     }
 }
 
+/// Splits a tuple with recursive associated types.
+pub trait Split {
+    /// The type split off from the tuple.
+    type This;
+    /// The rest of the tuple aside from the split off associated type.
+    type Next: Split;
+    /// Is there another split possible.
+    fn next() -> bool;
+}
+
 /// Deconstructs the group.
-pub trait GroupLocals: ComponentGroup {
-    deconstruct!(A B C D E F G H I J K L M N O P Q R S T U V W X Y Z);
-    /// Amount of associated types this group uses.
-    fn used() -> usize;
+pub trait DeconstructedGroup: ComponentGroup {
+    //type All: Split;
+    /// Locals of the group.
+    type Locals: Split;
+    /// Subgroups of the group.
+    type Subgroups: Split;
+    //fn all() -> usize;
+    /// Amount of local components there are in this group.
+    fn locals() -> usize;
+    /// Amount of subgroups there are in this group.
+    fn subgroups() -> usize;
+}
+
+impl<A, B: Split> Split for (A, B) {
+    type This = A;
+    type Next = B;
+    fn next() -> bool { true }
+}
+
+impl<A> Split for (A,) {
+    type This = A;
+    type Next = ();
+    fn next() -> bool { false }
+}
+
+impl Split for () {
+    type This = ();
+    type Next = ();
+    fn next() -> bool { false }
 }
