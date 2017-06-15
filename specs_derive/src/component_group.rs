@@ -19,7 +19,7 @@ pub fn expand_group(input: &DeriveInput) -> Result<Tokens, String> {
         .filter(|item| !item.parameter.ignore )
         .collect::<Vec<&Item>>();
 
-    // Component fields
+    // Local component fields
     let ref component = items.iter()
         .filter(|item| item.parameter.option.is_component() )
         .map(|item| *item)
@@ -54,19 +54,21 @@ pub fn expand_group(input: &DeriveInput) -> Result<Tokens, String> {
         })
         .collect::<Vec<_>>();
 
+    let all_count = all.iter().count();
     let local_count = component.iter().count();
     let subgroup_count = subgroup.iter().count();
 
-    // Construct Split groups for the components and subgroups.
+    // Construct Split tuple groups for the components and subgroups.
+    let all_ty = type_list(Vec::new());
     let local_ty = type_list(component);
     let subgroup_ty = type_list(subgroup);
 
     let locals_impl = quote! {
         impl _specs::entity::DeconstructedGroup for #name {
-            //type All;
+            type All = #all_ty;
             type Locals = #local_ty;
             type Subgroups = #subgroup_ty;
-            //fn all() -> usize { #all_count }
+            fn all() -> usize { #all_count }
             fn locals() -> usize { #local_count }
             fn subgroups() -> usize { #subgroup_count }
         }
