@@ -9,8 +9,6 @@ use serde::{Serialize, Serializer, Deserializer};
 #[cfg(feature="serialize")]
 use group::SerializeGroup;
 
-use group::ComponentGroup;
-
 use hibitset::{AtomicBitSet, BitSet, BitSetOr};
 use mopa::Any;
 use shred::{Fetch, FetchMut, Resource, Resources};
@@ -715,12 +713,12 @@ impl<'a, G> WorldDeserializer<'a, G> {
 }
 
 #[cfg(feature="serialize")]
-impl<'a, G> DeserializeSeed for WorldDeserializer<'a, G>
+impl<'a, 'de, G> DeserializeSeed<'de> for WorldDeserializer<'a, G>
     where G: ComponentGroup + SerializeGroup,
 {
     type Value = ();
     fn deserialize<D>(self, deserializer: D) -> Result<(), D::Error>
-        where D: Deserializer
+        where D: Deserializer<'de>
     {
         G::deserialize_group(self.world, self.entities, deserializer)
     }
