@@ -13,6 +13,8 @@ extern crate serde_derive;
 #[cfg(feature="serialize")]
 extern crate serde_json;
 
+use std::mem;
+
 macro_rules! call {
     // Top level calls
     ( local: $group:ty => 
@@ -249,6 +251,11 @@ fn main() {
     call!(local: SomeGroup =>
         fn call_other [ ] in [ ] (s)
     );
+
+    let x: <SomeGroup as DeconstructedGroup>::Locals = unsafe { mem::uninitialized() };
+    for item in x.split_iter("<SomeGroup as DeconstructedGroup>::Locals".to_owned()) {
+        println!("item: {:?}", item);
+    }
 }
 
 #[cfg(not(feature="serialize"))]
