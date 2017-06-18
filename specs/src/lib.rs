@@ -183,7 +183,7 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 
-pub use group::{ComponentGroup, DeconstructedGroup, SerializeGroup, Split};
+pub use group::{ComponentGroup, DeconstructedGroup, Split};
 pub use join::{Join, JoinIter, JoinParIter, ParJoin};
 pub use shred::{ Dispatcher, DispatcherBuilder, Fetch, FetchId, FetchIdMut,
                 FetchMut, RunNow, RunningTime, System, SystemData};
@@ -198,13 +198,16 @@ pub use world::{Component, CreateIter, CreateIterAtomic, EntitiesRes, Entity, En
                 Generation, World};
 
 #[cfg(feature="serialize")]
-pub use world::{WorldSerializer, WorldDeserializer};
+pub use group::SerializeGroup;
 
 #[cfg(feature = "serialize")]
 pub use storage::{MergeError, PackedData};
 
 #[cfg(feature = "common")]
 pub mod common;
+
+#[cfg(feature="serialize")]
+pub use world::{WorldSerializer, WorldDeserializer};
 
 /// A wrapper for a fetched `Entities` resource.
 /// Note that this is just `Fetch<Entities>`, so
