@@ -54,7 +54,6 @@ fn main() {
     #[allow(dead_code)]
     struct SomeGroup {
         #[group(serialize)]
-        #[group(id = "5")]
         field1: Comp1,
 
         #[group(serialize)]
