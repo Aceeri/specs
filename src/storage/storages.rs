@@ -5,6 +5,7 @@ use std::marker::PhantomData;
 
 use fnv::FnvHashMap;
 use hibitset::BitSet;
+use rudy::rudymap::RudyMap;
 
 use world::EntityIndex;
 use {DistinctStorage, Index, Join, UnprotectedStorage};
@@ -347,3 +348,28 @@ impl<T> UnprotectedStorage<T> for VecStorage<T> {
 }
 
 unsafe impl<T> DistinctStorage for VecStorage<T> {}
+
+pub struct RudyStorage<T>(RudyMap<u32, T>);
+
+impl<T> UnprotectedStorage<T> for RudyStorage<T> {
+    fn new() -> Self {
+        RudyStorage(RudyMap::new())
+    }
+    unsafe fn clean<F>(&mut self, has: F)
+        where F: Fn(Index) -> bool
+    {
+        
+    }
+    unsafe fn get(&self, id: Index) -> &T {
+        self.0.get(id).unwrap()
+    }
+    unsafe fn get_mut(&mut self, id: Index) -> &mut T {
+        self.0.get_mut(id).unwrap()
+    }
+    unsafe fn insert(&mut self, id: Index, component: T) {
+        self.0.insert(id, component);
+    }
+    unsafe fn remove(&mut self, id: Index) -> T {
+        self.0.remove(id).unwrap()
+    }
+}

@@ -176,6 +176,7 @@ extern crate mopa;
 extern crate shred;
 extern crate tuple_utils;
 extern crate rayon;
+extern crate rudy;
 
 #[cfg(feature="serialize")]
 extern crate serde;
