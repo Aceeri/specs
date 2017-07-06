@@ -1,6 +1,4 @@
-# Specs
-
-> **S**pecs **P**arallel **ECS**
+# Specs Procedural Derive Macros
 
 [![Build Status][bi]][bl] [![Crates.io][ci]][cl] [![Gitter][gi]][gl] ![MIT/Apache][li] [![Docs.rs][di]][dl]
 
@@ -18,90 +16,63 @@
 [gi]: https://badges.gitter.im/slide-rs/specs.svg
 [gl]: https://gitter.im/slide-rs/specs
 
-Specs is an Entity-Component System written in Rust. 
-Unlike most other ECS libraries out there, it provides
 
-* easy parallelism
-* high flexibility
-    * contains 5 different storages for components, which can be extended by the user
-    * it's types are mostly not coupled, so you can easily write some part yourself and
-      still use Specs
-    * `System`s may read from and write to components and resources, can depend on each
-      other and you can use barriers to force several stages in system execution
-* high performance for real-world applications
+## Component Grouping
 
-## Example
+Component grouping allows for non-dynamic dispatch on multiple components without a lot of boilerplate.
+Normally if you wanted to generically call a method on a bunch of components you would need to do something
+similar to:
 
 ```rust
-// A component contains data
-// which is associated with an entity.
-#[derive(Debug)]
-struct Vel(f32);
-#[derive(Debug)]
-struct Pos(f32);
+fn method<C: Component>() { ... }
+method::<Component1>();
+method::<Component2>();
+...
+```
 
-impl Component for Vel {
-    type Storage = VecStorage<Vel>;
-}
+Which can easily become tedious when it becomes necessary to do this for a changing amount of components.
+A side benefit of using this approach means you do not need any dynamic dispatch to do so.
 
-impl Component for Pos {
-    type Storage = VecStorage<Pos>;
-}
+### Usage
 
-struct SysA;
+Component groups are defined using a simple `struct` and deriving the `ComponentGroup` trait.
+`group` attributes can be used to modify the components and subgroups in the group.
 
-impl<'a> System<'a> for SysA {
-    // These are the resources required for execution.
-    // You can also define a struct and `#[derive(SystemData)]`,
-    // see the `full` example.
-    type SystemData = (WriteStorage<'a, Pos>, ReadStorage<'a, Vel>);
+```rust
+#[derive(ComponentGroup)]
+struct ExampleGroup {
+    // The group defaults to just a component.
+    //
+    // The field name "component1" will be used as an
+    // unique identifier.
+    component1: Component1,
+    // If you need a subgroup, then you need to
+    // designate the fields that are subgroups.
+    #[group(subgroup)]
+    subgroup1: Subgroup1,
 
-    fn run(&mut self, data: Self::SystemData) {
-        // The `.join()` combines multiple components,
-        // so we only access those entities which have
-        // both of them.
-
-        let (mut pos, vel) = data;
-
-        for (pos, vel) in (&mut pos, &vel).join() {
-            pos.0 += vel.0;
-        }
-    }
-}
-
-fn main() {
-    // The `World` is our
-    // container for components
-    // and other resources.
-    let mut world = World::new();
-    world.register::<Pos>();
-    world.register::<Vel>();
-
-    // An entity may or may not contain some component.
-
-    world.create_entity().with(Vel(2.0)).with(Pos(0.0)).build();
-    world.create_entity().with(Vel(4.0)).with(Pos(1.6)).build();
-    world.create_entity().with(Vel(1.5)).with(Pos(5.4)).build();
-
-    // This entity does not have `Vel`, so it won't be dispatched.
-    world.create_entity().with(Pos(2.0)).build();
-
-    // This builds a dispatcher.
-    // The third parameter of `add` specifies
-    // logical dependencies on other systems.
-    // Since we only have one, we don't depend on anything.
-    // See the `full` example for dependencies.
-    let mut dispatcher = DispatcherBuilder::new().add(SysA, "sys_a", &[]).build();
-
-    // This dispatches all the systems in parallel (but blocking).
-    dispatcher.dispatch(&mut world.res);
+    // Component grouping comes with built in support
+    // for serialization and deserialization with `serde`
+    // usage
+    #[group(serialize)]
+    serialize1: CompSerialize1,
 }
 ```
 
-Please look into [the examples directory](examples) for more.
+### Attributes
 
-## Contribution
+All attributes used in a `ComponentGroup` derive are designated with a `group` prefix `#[group(...)]`.
 
-Contribution is very welcome! If you didn't contribute before, just
-filter for issues with "easy" label. Please note that your contributions
-are assumed to be dual-licensed under Apache-2.0/MIT.
+`#[group(subgroup)]`
+
+Field is a subgroup, the parent group will try to act like the subgroup's members (components and 
+nested subgroups) are included in operations.
+
+`#[group(serialize)]`
+
+Field should be serialized. Note: This requires that all
+components implement `Serialize`/`Deserialize`.
+
+`#[group(id = "0")]`
+
+Uses a dynamic component id for this component. Default is `0usize`.
