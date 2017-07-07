@@ -349,6 +349,7 @@ impl<T> UnprotectedStorage<T> for VecStorage<T> {
 
 unsafe impl<T> DistinctStorage for VecStorage<T> {}
 
+/// Storage using a "RudyMap".
 pub struct RudyStorage<T>(RudyMap<u32, T>);
 
 impl<T> UnprotectedStorage<T> for RudyStorage<T> {
@@ -373,3 +374,5 @@ impl<T> UnprotectedStorage<T> for RudyStorage<T> {
         self.0.remove(id).unwrap()
     }
 }
+
+unsafe impl<T> DistinctStorage for RudyStorage<T> {}

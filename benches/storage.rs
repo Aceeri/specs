@@ -3,67 +3,128 @@
 extern crate test;
 extern crate specs;
 
-static NUM: u32 = 10_000_000;
-
-struct CompInt(u32);
-struct CompBool(f32);
-
-impl Default for CompInt {
-    fn default() -> Self {
-        CompInt(0)
-    }
-}
-
-impl Default for CompBool {
-    fn default() -> Self {
-        CompBool(true)
-    }
-}
-
 macro_rules! setup {
-    ($num:expr => [ $( $comp:ty = $sparsity:expr ),* ] ) => {
-        let mut w = World::new();
-        $(
-            w.register::<$comp>();
-        )*
-        let mut eids: Vec<_> = (0..$num)
-            .map(|i| {
-                let mut builder = w.create_entity();
-
-                $(
-                    if i % $sparsity == 0 {
-                        builder.with(<$comp>::default());
+    ($num:expr => [ $( $comp:ty ),* ] ) => {
+        pub fn setup(insert: bool, sparsity: u32) -> (World, Vec<Entity>) {
+            let mut w = World::new();
+            $(
+                w.register::<$comp>();
+            )*
+            
+            let mut eids: Vec<_> = (0..$num)
+                .map(|i| {
+                    let mut builder = w.create_entity();
+                    if insert && i % sparsity == 0 {
+                        $(
+                            builder = builder.with::<$comp>(<$comp>::default()); 
+                        )*
                     }
-                )*
-                
-                builder.build()
-            })
-            .collect();
+                    builder.build()
+                })
+                .collect();
+
+            (w, eids)
+        }
+    }
+}
+
+macro_rules! gap {
+    ( $name:ident => $sparsity:expr ) => {
+        mod $name {
+            use super::{CompInt, CompBool, setup};
+            use test::Bencher;
+
+            #[bench]
+            fn insert(bencher: &mut Bencher) {
+                let (mut world, mut entities) = setup(false, $sparsity);
+                let mut ints = world.write::<CompInt>();
+                let mut bools = world.write::<CompBool>();
+
+                bencher.iter(move || {
+                    for &entity in &entities {
+                        ints.insert(entity, CompInt::default());
+                        bools.insert(entity, CompBool::default());
+                    }
+                });
+            }
+            #[bench]
+            fn remove(bencher: &mut Bencher) {
+                let (mut world, mut entities) = setup(true, $sparsity);
+                let mut ints = world.write::<CompInt>();
+                let mut bools = world.write::<CompBool>();
+
+                bencher.iter(move || {
+                    for &entity in &entities {
+                        ints.remove(entity);
+                        bools.remove(entity);
+                    }
+                });
+            }
+            #[bench]
+            fn get(bencher: &mut Bencher) {
+                let (mut world, mut entities) = setup(true, $sparsity);
+                let ints = world.read::<CompInt>();
+                let bools = world.read::<CompBool>();
+
+                bencher.iter(move || {
+                    for &entity in &entities {
+                        let int = ints.get(entity);
+                        let boolean = bools.get(entity);
+                    }
+                });
+            }
+        }
     }
 }
 
 macro_rules! tests {
-    ($storage:ident [ $( $generics:tt ),* ]) => {
-        impl Component for CompInt {
-            type Storage = $storage<CompInt $( , $generics )*>;
-        }
-        impl Component for CompBool {
-            type Storage = $storage<CompInt $( , $generics )*>;
-        }
+    ($mod:ident => $storage:ty) => {
+        mod $mod {
+            use specs::{Component, Entity, World};
 
-        // no gaps
-        #[bench]
-        fn straight(bencher: &mut Bencher) {
-            setup!(NUM => [ CompInt = 1, CompBool = 1 ]);
+            pub static NUM: u32 = 100_000;
 
-            bencher.iter({
-                
-            });
+            pub struct CompInt(u32);
+            pub struct CompBool(bool);
+
+            impl Default for CompInt {
+                fn default() -> Self {
+                    CompInt(0)
+                }
+            }
+
+            impl Default for CompBool {
+                fn default() -> Self {
+                    CompBool(true)
+                }
+            }
+
+            impl Component for CompInt {
+                type Storage = $storage;
+            }
+            impl Component for CompBool {
+                type Storage = $storage;
+            }
+            
+            setup!(NUM => [ CompInt, CompBool ]);
+
+            gap!(sparse_1 => 1);
+            gap!(sparse_2 => 2);
+            gap!(sparse_4 => 4);
+            gap!(sparse_8 => 8);
+            gap!(sparse_128 => 128);
+            gap!(sparse_256 => 256);
+            gap!(sparse_512 => 512);
+            gap!(sparse_1024 => 1024);
+            gap!(sparse_10000 => 10_000);
+            gap!(sparse_50000 => 50_000);
         }
     }
 }
 
-#[test]
-mod vec {
-    tests!(VecStorage [T]);
-}
+tests!(vec_storage => ::specs::VecStorage<Self>);
+tests!(dense_vec_storage => ::specs::DenseVecStorage<Self>);
+tests!(hashmap_storage => ::specs::HashMapStorage<Self>);
+tests!(btree_storage => ::specs::BTreeStorage<Self>);
+tests!(rudy_storage => ::specs::RudyStorage<Self>);
+//tests!(null_storage => ::specs::NullStorage<Self>);
