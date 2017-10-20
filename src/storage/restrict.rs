@@ -185,6 +185,27 @@ where
     /// Builds a mutable `RestrictedStorage` out of a `Storage`. Allows restricted
     /// access to the inner components without allowing invalidating the
     /// bitset for iteration in `Join`.
+    ///
+    /// ## Example
+    /// ```rust
+    /// extern crate specs;
+    /// 
+    /// struct Comp(u32);
+    /// impl Component for Comp {
+    /// type Storage = DenseVecStorage<Self>;
+    /// }
+    /// 
+    /// fn main() {
+    /// let mut world = World::new();
+    /// world.register::<Comp>();
+    /// let mut storage = world.write::<Comp>();
+    /// let entities = world.read_resource::<EntitiesRes>();
+    /// for (entity, (entry, restricted)) in (&*entities, (&mut storage).restrict()).join() {
+    ///     if restrict.get(entity) > 20 {
+    ///         restricted.get_mut_unchecked(entry)
+    ///     }
+    /// }
+    /// ```
     pub fn restrict<'rf>(
         &'rf mut self,
     ) -> RestrictedStorage<'rf, 'st, &BitSet, T, &mut T::Storage, NormalRestriction> {
