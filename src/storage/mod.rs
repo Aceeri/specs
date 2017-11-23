@@ -5,7 +5,7 @@ pub use self::flagged::Flagged;
 pub use self::restrict::{Entry, NormalRestriction, ParallelRestriction, RestrictedStorage};
 #[cfg(feature = "serde")]
 pub use self::ser::{MergeError, PackedData};
-pub use self::meta::{HasMeta, Metadata};
+pub use self::meta::Metadata;
 pub use self::storages::{BTreeStorage, DenseVecStorage, HashMapStorage, NullStorage, VecStorage};
 #[cfg(feature = "rudy")]
 pub use self::storages::RudyStorage;
@@ -16,6 +16,7 @@ use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut, Not};
 
 use hibitset::{BitSet, BitSetNot};
+use hlist::Find;
 use mopa::Any;
 use shred::Fetch;
 
@@ -23,13 +24,15 @@ use self::drain::Drain;
 use {Component, EntitiesRes, Entity, Index, Join, ParJoin};
 use error::WrongGeneration;
 
+#[macro_use]
+mod meta;
+
 mod data;
 mod drain;
 mod restrict;
 mod flagged;
 #[cfg(feature = "serde")]
 mod ser;
-mod meta;
 mod storages;
 #[cfg(test)]
 mod tests;
@@ -251,17 +254,16 @@ where
         self.data.mask.clone()
     }
 
-    /*
+    /// Retrieves all metadata from a component immutably.
     pub fn meta(&self) -> &T::Metadata {
         &self.data.wrapped.meta
     }
-    */
 
-    pub fn find<M>(&self) -> &M
-        where T::Metadata: HasMeta<M>,
+    /// Retrieves a specific metadata structure immutably.
+    pub fn find<M, I>(&self) -> &M
+        where T::Metadata: Find<M, I>,
     {
-        self.data.wrapped.meta.find()
-        //self.meta().find()
+        Find::<M, I>::get(self.meta())
     }
 }
 
@@ -474,17 +476,16 @@ where
         }
     }
 
-    /*
+    /// Retrieves all metadata from a component's storage.
     pub fn meta_mut(&mut self) -> &mut T::Metadata {
         &mut self.data.wrapped.meta
     }
-    */
 
-    pub fn find_mut<M>(&mut self) -> &mut M
-        where T::Metadata: HasMeta<M>,
+    /// Retrieves a specific metadata by type.
+    pub fn find_mut<M, I>(&mut self) -> &mut M
+        where T::Metadata: Find<M, I>,
     {
-        self.data.wrapped.meta.find_mut()
-        //self.meta_mut().find_mut()
+        Find::<M, I>::get_mut(self.meta_mut())
     }
 }
 

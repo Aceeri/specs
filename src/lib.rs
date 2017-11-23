@@ -1,4 +1,4 @@
-//#![deny(missing_docs)]
+#![deny(missing_docs)]
 #![cfg_attr(feature = "nightly", feature(core_intrinsics))]
 #![recursion_limit="1024"]
 
@@ -195,6 +195,7 @@ extern crate crossbeam;
 extern crate derivative;
 extern crate fnv;
 extern crate hibitset;
+extern crate hlist;
 extern crate mopa;
 extern crate rayon;
 extern crate shred;
@@ -212,6 +213,8 @@ extern crate shred_derive;
 #[cfg(feature = "rudy")]
 extern crate rudy;
 
+pub use hlist::{Cons, Find, Nil};
+
 pub use join::{Join, JoinIter, JoinParIter, ParJoin};
 pub use shred::{Dispatcher, DispatcherBuilder, Fetch, FetchId, FetchIdMut, FetchMut, RunNow,
                 RunningTime, System, SystemData};
@@ -220,10 +223,10 @@ pub use shred::{Dispatcher, DispatcherBuilder, Fetch, FetchId, FetchIdMut, Fetch
 pub use shred::AsyncDispatcher;
 
 pub use storage::{BTreeStorage, Change, ChangeEvents, DenseVecStorage, DistinctStorage, Entry,
-                  Flagged, HashMapStorage, HasMeta, InsertResult, MaskedStorage, Metadata, NormalRestriction,
-                  NullStorage, OccupiedEntry, ParallelRestriction, ReadStorage, RestrictedStorage,
-                  Storage, StorageEntry, TrackedStorage, UnprotectedStorage, VacantEntry,
-                  VecStorage, WrappedStorage, WriteStorage};
+                  Flagged, HashMapStorage, HasMeta, InsertResult, MaskedStorage, Metadata,
+                  NormalRestriction, NullStorage, OccupiedEntry, ParallelRestriction, ReadStorage,
+                  RestrictedStorage, Storage, StorageEntry, TrackedStorage, UnprotectedStorage,
+                  VacantEntry, VecStorage, WrappedStorage, WriteStorage};
 pub use world::{Component, CreateIter, CreateIterAtomic, EntitiesRes, Entity, EntityBuilder,
                 Generation, LazyUpdate, World};
 

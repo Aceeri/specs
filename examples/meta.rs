@@ -1,29 +1,18 @@
 
-extern crate specs;
 #[macro_use]
-extern crate specs_derive;
+extern crate specs;
 
 use specs::*;
 
-#[derive(Default, Metadata)]
-struct Other {
-    flagged: Flagged,
-}
-
-#[derive(Default, Metadata)]
-struct TestMetadata {
-    flagged: Flagged,
-    other: Other,
-}
-
-#[derive(Default, Metadata)]
-struct TupleMetadata(Flagged, Other);
+#[derive(Default)]
+pub struct Other;
+impl<T> Metadata<T> for Other { }
 
 #[derive(Debug, Default)]
 struct TestComp;
 impl Component for TestComp {
     type Storage = DenseVecStorage<Self>;
-    type Metadata = TupleMetadata;
+    type Metadata = metadata! [ Flagged, Other ];
 }
 
 fn main() {
@@ -44,7 +33,7 @@ fn main() {
         .build();
     {
         let mut storage = world.write::<TestComp>();
-        storage.find_mut::<Flagged>().clear_flags();
+        storage.find_mut::<Flagged, _>().clear_flags();
         storage.get_mut(e1);
         storage.get_mut(e4);
     }
@@ -53,7 +42,7 @@ fn main() {
         let storage = world.read::<TestComp>();
 
         // Grab the metadata.
-        let flagged = storage.find::<Flagged>();
+        let flagged = storage.find::<Flagged, _>();
 
         for (entity, comp, _) in (&*world.entities(), &storage, flagged).join() {
             println!("({:?}, {:?}): {:?}", entity.id(), entity.gen().id(), comp);
@@ -62,8 +51,8 @@ fn main() {
 
     {
         let mut storage = world.write::<TestComp>();
-        storage.find::<Flagged>();
-        let _inner_flagged: &mut Flagged = storage.find_mut::<Other>().find_mut();
+        storage.find::<Flagged, _>();
+        let _inner_flagged: &mut Flagged = storage.find_mut::<Other, _>().find_mut();
     }
 
     {
@@ -71,7 +60,7 @@ fn main() {
 
         {
             // Grab the metadata and clone it to avoid borrow issues
-            let flagged = storage.find::<Flagged>().clone();
+            let flagged = storage.find::<Flagged, _>().clone();
 
             // Iterate over all flagged components
             for (entity, comp, _) in (&*world.entities(), &mut storage, flagged).join() {

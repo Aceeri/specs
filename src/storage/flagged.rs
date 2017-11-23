@@ -1,7 +1,7 @@
 
 use hibitset::BitSet;
 
-use {Index, Join, HasMeta, Metadata};
+use {Index, Join, Metadata};
 use world::EntityIndex;
 
 /// Wrapper storage that stores modifications to components in a bitset.
@@ -117,15 +117,6 @@ impl<T> Metadata<T> for Flagged {
     }
     fn remove(&mut self, id: Index, _: &T) {
         self.mask.remove(id);
-    }
-}
-
-impl HasMeta<Self> for Flagged {
-    fn find(&self) -> &Self {
-        self
-    }
-    fn find_mut(&mut self) -> &mut Self {
-        self
     }
 }
 
