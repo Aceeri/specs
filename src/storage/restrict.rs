@@ -49,17 +49,28 @@ pub enum ParallelRestriction {}
 ///     }
 /// }
 /// ```
-pub struct RestrictedStorage<'rf, 'st: 'rf, B, T, R, RT>
+pub struct RestrictedStorage<'rf, 'st: 'rf, M, S>
 where
-    T: Component,
-    R: Borrow<T::Storage> + 'rf,
-    B: Borrow<BitSet> + 'rf,
+    M: Borrow<BitSet> + 'rf,
+    S: Borrow<T::Storage> + 'rf,
 {
     bitset: B,
     data: R,
     entities: &'rf Entities<'st>,
-    phantom: PhantomData<(T, RT)>,
 }
+
+/// Structure that is returned 
+pub struct Restricted<'rf, 'st: 'rf, M, S>
+where
+    M: Borrow<BitSet> + 'rf,
+    S: Borrow<T::Storage> + 'rf,
+{
+    bitset: M,
+    data: D,
+    index: Index,
+    entities: &'rf Entities<'st>,
+}
+    
 
 unsafe impl<'rf, 'st: 'rf, B, T, R> ParJoin
     for &'rf mut RestrictedStorage<'rf, 'st, B, T, R, ParallelRestriction>
@@ -135,20 +146,14 @@ where
     R: Borrow<T::Storage>,
     B: Borrow<BitSet>,
 {
-    type Type = (Entry<'rf, T>, Self);
+    type Type = Self;
     type Value = Self;
     type Mask = &'rf BitSet;
     fn open(self) -> (Self::Mask, Self::Value) {
         (self.bitset.borrow(), self)
     }
     unsafe fn get(value: &mut Self::Value, id: Index) -> Self::Type {
-        let entry = Entry {
-            id,
-            pointer: value.data.borrow() as *const T::Storage,
-            phantom: PhantomData,
-        };
-
-        (entry, value)
+        value
     }
 }
 
@@ -158,22 +163,15 @@ where
     R: BorrowMut<T::Storage>,
     B: Borrow<BitSet>,
 {
-    type Type = (Entry<'rf, T>, Self);
+    type Type = Self;
     type Value = Self;
     type Mask = BitSet;
     fn open(self) -> (Self::Mask, Self::Value) {
         (self.bitset.borrow().clone(), self)
     }
     unsafe fn get(value: &mut Self::Value, id: Index) -> Self::Type {
-        use std::mem;
-        let entry = Entry {
-            id,
-            pointer: value.data.borrow() as *const T::Storage,
-            phantom: PhantomData,
-        };
-
         let value: &'rf mut Self::Value = mem::transmute(value);
-        (entry, value)
+        value
     }
 }
 
@@ -191,7 +189,8 @@ where
         let (mask, data) = self.data.open_mut();
         RestrictedStorage {
             bitset: mask,
-            data,
+            data: data,
+            index: None,
             entities: &self.entities,
             phantom: PhantomData,
         }
@@ -206,71 +205,11 @@ where
         let (mask, data) = self.data.open_mut();
         RestrictedStorage {
             bitset: mask,
-            data,
+            data: data,
+            index: None,
             entities: &self.entities,
             phantom: PhantomData,
         }
     }
 }
 
-/// An entry to a storage.
-pub struct Entry<'rf, T>
-where
-    T: Component,
-{
-    id: Index,
-    // Pointer for comparison when attempting to check against a storage.
-    pointer: *const T::Storage,
-    phantom: PhantomData<&'rf ()>,
-}
-
-unsafe impl<'rf, T: Component> Send for Entry<'rf, T> {}
-unsafe impl<'rf, T: Component> Sync for Entry<'rf, T> {}
-
-impl<'rf, T> fmt::Debug for Entry<'rf, T>
-where
-    T: Component,
-{
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            formatter,
-            "Entry {{ id: {}, pointer: {:?} }}",
-            self.id,
-            self.pointer
-        )
-    }
-}
-
-impl<'rf, T> Entry<'rf, T>
-where
-    T: Component,
-{
-    #[inline]
-    fn assert_same_storage(&self, storage: &T::Storage) {
-        assert_eq!(
-            self.pointer,
-            storage as *const T::Storage,
-            "Attempt to get an unchecked entry from a storage: {:?} {:?}",
-            self.pointer,
-            storage as *const T::Storage
-        );
-    }
-}
-
-impl<'rf, T> EntityIndex for Entry<'rf, T>
-where
-    T: Component,
-{
-    fn index(&self) -> Index {
-        self.id
-    }
-}
-
-impl<'a, 'rf, T> EntityIndex for &'a Entry<'rf, T>
-where
-    T: Component,
-{
-    fn index(&self) -> Index {
-        (*self).index()
-    }
-}
