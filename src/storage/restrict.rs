@@ -61,6 +61,18 @@ where
     phantom: PhantomData<(T, RT)>,
 }
 
+pub struct Restricted<'rf, 'st: 'rf, B, T, R, RT>
+where
+    T: Component,
+    R: Borrow<T::Storage> + 'rf,
+    B: Borrow<BitSet> + 'rf,
+{
+    data: R,
+    index: Index,
+    entities: &'rf Entities<'st>,
+    phantom: PhantomData<(T, RT)>,
+}
+
 unsafe impl<'rf, 'st: 'rf, B, T, R> ParJoin
     for &'rf mut RestrictedStorage<'rf, 'st, B, T, R, ParallelRestriction>
 where
@@ -135,7 +147,7 @@ where
     R: Borrow<T::Storage>,
     B: Borrow<BitSet>,
 {
-    type Type = (Entry<'rf, T>, Self);
+    type Type = Restricted<'rf, 'st, B, T, R, RT>;
     type Value = Self;
     type Mask = &'rf BitSet;
     fn open(self) -> (Self::Mask, Self::Value) {
@@ -213,64 +225,3 @@ where
     }
 }
 
-/// An entry to a storage.
-pub struct Entry<'rf, T>
-where
-    T: Component,
-{
-    id: Index,
-    // Pointer for comparison when attempting to check against a storage.
-    pointer: *const T::Storage,
-    phantom: PhantomData<&'rf ()>,
-}
-
-unsafe impl<'rf, T: Component> Send for Entry<'rf, T> {}
-unsafe impl<'rf, T: Component> Sync for Entry<'rf, T> {}
-
-impl<'rf, T> fmt::Debug for Entry<'rf, T>
-where
-    T: Component,
-{
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            formatter,
-            "Entry {{ id: {}, pointer: {:?} }}",
-            self.id,
-            self.pointer
-        )
-    }
-}
-
-impl<'rf, T> Entry<'rf, T>
-where
-    T: Component,
-{
-    #[inline]
-    fn assert_same_storage(&self, storage: &T::Storage) {
-        assert_eq!(
-            self.pointer,
-            storage as *const T::Storage,
-            "Attempt to get an unchecked entry from a storage: {:?} {:?}",
-            self.pointer,
-            storage as *const T::Storage
-        );
-    }
-}
-
-impl<'rf, T> EntityIndex for Entry<'rf, T>
-where
-    T: Component,
-{
-    fn index(&self) -> Index {
-        self.id
-    }
-}
-
-impl<'a, 'rf, T> EntityIndex for &'a Entry<'rf, T>
-where
-    T: Component,
-{
-    fn index(&self) -> Index {
-        (*self).index()
-    }
-}
